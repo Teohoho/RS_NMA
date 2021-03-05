@@ -1,0 +1,158 @@
+
+###############################################
+# ---    iMOD - Internal Coordinates      --- #
+# --- Normal Mode Analysis toolkit. v1.04 --- #
+# ---  Chacon's lab - January 12th, 2016  --- # 
+###############################################
+
+
+In this release (v1.04), the last stable versions of iMOD tools are provided.
+They are intended to work, but testing is very limited. 
+
+
+--------
+OVERVIEW
+--------
+
+With the iMOD tools you will be able to compute, visualize, and animate the
+normal modes of both proteins and nucleic acids (DNA and RNA), as well as, 
+to perform Monte-Carlo simulations, analyze deformability, and compute feasible
+trajectories between two different conformations using such modes. 
+
+The internal coordinates formulation of iMOD implicitly preserves the covalent
+structure and effectively extends the applicability range to larger systems and
+conformational changes.
+
+
+--------
+PROVIDED
+--------
+
+We provide statically linked executables generated with Intel and GNU 
+compilers to minimize library dependence problems. Dynamic linking was used
+for the Intel releases that employ diagonalization routines.
+
+> Programs provided
+-------------------
+imode    v1.20 --> Tool for NMA in Internal Coordinate Space (ICS).
+imove    v1.14 --> Movie maker based on ICS Normal Modes.
+imodview v1.08 --> Normal modes visualization tool.
+imc      v1.11 --> Monte-Carlo tool based on ICS normal modes.
+imorph   v1.44 --> Morphing tool based on ICS normal modes.
+
+*All the programs show a basic help text using the --help option.
+
+> Binaries releases
+-------------------
+
+Pre-compiled binaries are available in the corresponding bin/ directory. You 
+can choose the appropriate release for your system:
+
+ [Program]        Compiler    Libraries              Linkage
+ -----------------------------------------------------------
+*<TOOL>           Intel icpc  -                      static
+*<TOOL>_mkl       Intel icpc  Intel MKL              dynamic
+ <TOOL>_gcc       GNU gcc     BLAS/LAPACK            static
+
+* Intel compiled binaries are the fastest alternatives. 
+<TOOL> corresponds to the name of the program.
+
+
+------------
+REQUIREMENTS
+------------
+
+Statically linked executables are ready-to-use (nothing else required).
+
+The following libraries and compilers may be required only to run the
+pre-compiled binaries that employ diagonalization routines (imode and imorph):
+
+
+> For Intel release: 
+--------------------
+
+- Intel's C++ and Fortran Compilers - Current tested version of icpc and ifort
+is 13.0.1 (gcc version 4.6.0 compatibility).
+
+- Intel's MKL libraries: BLAS and LAPACK implementations optimized for Intel
+processors (Current tested version Intel MKL 11.0 update 1).
+
+These Intel libraries and compiler can be obtained for free from Intel's 
+web site:
+http://software.intel.com/en-us/articles/non-commercial-software-download/
+
+Please, download and install the Intel Compilers and Math Kernel Library:
+  "Intel C++ Composer XE for Linux" (current tested version is 2013.1.117)
+
+
+> For GNU release: 
+------------------
+
+- All GNU pre-compiled binaries were compiled and statically linked using the
+GNU gcc compiler version 4.6.3. They should run directly on any modern Linux
+kernel without any dependence requirement.
+
+
+* In case you don't conform any of these requirements, you can use the 
+static binaries to avoid any dependence related problem.
+
+
+-----------
+COMPILATION
+-----------
+
+If you need to compile this software and/or experience any problem, please,
+feel free to contact us! (see below)
+
+
+------------
+WEB-TUTORIAL
+------------
+
+We encourage you to visit our web site and follow the tutorials:
+
+  http://chaconlab.org/methods/multiscale-simulations/imod/imod-tuto (iMOD)
+
+Alternatively, you can directly use our iMOD tools in our fast iMODS server:
+
+  http://imods.chaconlab.org (iMODS server)
+
+*The files to be used in tutorials can be found in the imod_test/ directory.
+
+
+----------
+REFERENCES
+----------
+
+Please, cite our work if any of our tools become useful for your research.
+
+> iMOD toolkit
+--------------
+López-Blanco JR, Garzón JI, Chacón P. (2011) iMod: multipurpose normal mode
+analysis in internal coordinates. Bioinformatics. 27 (20): 2843-50.
+
+> Deformability
+---------------
+Kovacs J., P. Chacón, R. Abagyan. (2004) Predictions of Protein Flexibility:
+First Order Measures. PROTEINS: Structure, Function, and Bioinformatics. Proteins. 56(4):661-8 
+
+> iMODS server
+--------------
+López-Blanco JR, Aliaga JI, Quintana-Ortí ES and Chacón P. (2014) iMODS:
+Internal coordinates normal mode analysis server. Nucleic acids research.
+42:W271-6.
+
+
+-------
+CONTACT
+-------
+
+Please, feel free to contact with us!
+(Any suggestion or bug report is welcome)
+
+Jóse Ramón López-Blanco (PhD.)  or  Pablo Chacón (PhD.)
+jrlopez@iqfr.csic.es                pablo@chaconlab.org
+
+Structural Bioinformatics Group
+IQFR-CSIC - Madrid (Spain)
+(http://chaconlab.org)
