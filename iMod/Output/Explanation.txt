@@ -1,0 +1,9 @@
+In "imode_ic.evec", the following information can be found:
+
+1) The eigenvalue for each mode (which represents the frequency of said vibration)
+2) The coresponding eigenvector for each dihedral angle.
+
+The imove_1.pdb and imove_10.pdb files contain a visualization of the lowest/highest frequency modes.
+
+Upsides: statically linked libraries, no install needed; easy-to-parse output.
+Downsides: Not in Python.
