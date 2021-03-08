@@ -1,1 +1,1 @@
-../iMOD_v1.04_Linux/bin/imode_gcc ../../Input/Trimer.NoGlyc_PostMin.pdb -o SpikeTrimer.NoGlyc --seed 3333008526
+../iMOD_v1.04_Linux/bin/imode_gcc ../../Input/Trimer.NoGlyc_PostMin.pdb -o SpikeTrimer.NoGlyc --seed 3333008526 

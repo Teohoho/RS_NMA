@@ -1,0 +1,64 @@
+imode>
+imode> Welcome to the NMA in Internal Coordinates tool v1.20
+imode>
+Parser> Using eigensolver: 1 
+imode> Reading PDB file: ../../Input/Trimer.NoGlyc_PostMin.pdb
+imode> Deleting Hydrogen atoms (if any)...
+imode> Deleting Water molecules (if any)...
+molinf>
+molinf> Mol Chains   Segments    Atoms
+molinf> --- ------ -----------  -------
+molinf>  1   1->A
+molinf>             1   672 aa   5309
+molinf>             2   553 aa   4272
+molinf>             3   672 aa   5309
+molinf>             4   553 aa   4272
+molinf>             5   672 aa   5309
+molinf>             6   553 aa   4272
+molinf>
+molinf> --- ------ -----------  -------
+molinf> SUMMARY:
+molinf> Number of Molecules ..... 1
+molinf> Number of Chain ......... 1
+molinf> Number of Segments ...... 6
+molinf> Number of Groups ........ 3675
+molinf> Number of Atoms ......... 28743
+molinf> Number of Hetero Mol .... 0
+molinf> Number of Hetero Atoms... 0
+molinf>
+imode> Coarse-Graining model: Full-Atom (no coarse-graining)
+imode> Selected model residues: 3675
+imode> Selected model (pseudo)atoms: 28743
+imode> Number of Dihedral angles: 7176
+imode> Rotational/Translational ICs (Non-Eckart): 36
+imode> Predicted number of ICs (Eckart): 7206
+imode> Number of ICs predicted by seg_props(): 7206
+imode> Range of computed modes: 1-20
+imode> Creating pairwise interaction potential:
+imode> Inverse Exponential (2060785 nipas) cutoff= 10.0, k= 1.000000, x0= 3.8 (4.312125 s)
+imode> Packed-Hessian/Kinetic matrices mem.= 207.735 Mb (rank= 7206)
+imode> Fast Hessian Matrix Building O(n^2) [hessianMFAx()] 4.197428 s
+imode> Fast Kinetic-Energy matrix Building O(n^2) [kineticMFAx()] 1.029443 s
+imode> Eigenvector matrix mem. = 1.153 Mb
+imode> Diagonalization with ARPACK-based dsdrv1_AP_BP_W_mon()... 68.705292 s
+imode> Showing the first 10 eigenvalues:
+imode>
+imode> MODE   EIGENVALUE
+imode>    1  1.54846e-06
+imode>    2  2.74412e-06
+imode>    3  2.76390e-05
+imode>    4  4.31599e-05
+imode>    5  5.20689e-05
+imode>    6  5.67620e-05
+imode>    7  5.89794e-05
+imode>    8  7.78584e-05
+imode>    9  1.08926e-04
+imode>   10  1.47890e-04
+imode>
+imode>
+imode> SAVED FILES:
+imode> Log file:                                         SpikeTrimer.NoGlyc.log
+imode> Model PDB:                                  SpikeTrimer.NoGlyc_model.pdb
+imode> ICS eigenvectors:                             SpikeTrimer.NoGlyc_ic.evec
+imode>
+imode> Bye!
