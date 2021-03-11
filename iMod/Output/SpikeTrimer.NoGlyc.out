@@ -35,12 +35,12 @@ imode> Predicted number of ICs (Eckart): 7206
 imode> Number of ICs predicted by seg_props(): 7206
 imode> Range of computed modes: 1-20
 imode> Creating pairwise interaction potential:
-imode> Inverse Exponential (2060785 nipas) cutoff= 10.0, k= 1.000000, x0= 3.8 (4.312125 s)
+imode> Inverse Exponential (2060785 nipas) cutoff= 10.0, k= 1.000000, x0= 3.8 (4.270644 s)
 imode> Packed-Hessian/Kinetic matrices mem.= 207.735 Mb (rank= 7206)
-imode> Fast Hessian Matrix Building O(n^2) [hessianMFAx()] 4.197428 s
-imode> Fast Kinetic-Energy matrix Building O(n^2) [kineticMFAx()] 1.029443 s
+imode> Fast Hessian Matrix Building O(n^2) [hessianMFAx()] 4.328138 s
+imode> Fast Kinetic-Energy matrix Building O(n^2) [kineticMFAx()] 0.992276 s
 imode> Eigenvector matrix mem. = 1.153 Mb
-imode> Diagonalization with ARPACK-based dsdrv1_AP_BP_W_mon()... 68.705292 s
+imode> Diagonalization with ARPACK-based dsdrv1_AP_BP_W_mon()... 70.811429 s
 imode> Showing the first 10 eigenvalues:
 imode>
 imode> MODE   EIGENVALUE
@@ -59,6 +59,7 @@ imode>
 imode> SAVED FILES:
 imode> Log file:                                         SpikeTrimer.NoGlyc.log
 imode> Model PDB:                                  SpikeTrimer.NoGlyc_model.pdb
+imode> Fixation mask file:                               SpikeTrimer.NoGlyc.fix
 imode> ICS eigenvectors:                             SpikeTrimer.NoGlyc_ic.evec
 imode>
 imode> Bye!

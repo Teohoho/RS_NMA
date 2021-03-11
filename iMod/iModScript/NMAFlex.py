@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import sys
 
-def NMAFlex(MDTrajObj, Threshold, Output, iModExec, tempRoot="./temp", modes=[1]):
+def NMAFlex(MDTrajObj, Threshold, Output, iModExec, tempRoot="./temp", modes=[1], deleteTemp=True):
 
     """
         Function that takes MDTraj Trajectory Object and a Threshold
@@ -30,6 +30,9 @@ def NMAFlex(MDTrajObj, Threshold, Output, iModExec, tempRoot="./temp", modes=[1]
                     Where to store the temp files that are generated 
         modes: list of str
                     List of modes to generate flex files for
+        deleteTemp: bool
+                    Whether or not to remove all temp files generated during 
+                    flex file generation
     """        
 
     ## Generate a PDB
@@ -111,4 +114,11 @@ def NMAFlex(MDTrajObj, Threshold, Output, iModExec, tempRoot="./temp", modes=[1]
             FlexOut.write("{} {} Pin \n".format(CAIndex, CIndex))
         else:
             FlexOut.write("{} {} Pin \n{} {} Pin\n".format(NIndex,CAIndex,CAIndex,CIndex))
+
+    ## Now we delete all the temp files we created during the process
+    if (deleteTemp is True):
+        for FileExt in [".fix", ".log", ".pdb", "_ic.evec", "_model.pdb"]:
+            procList   = ["rm", "{}{}".format(tempRoot,FileExt)]
+            removeTemp = subprocess.Popen(procList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     print ("Done!")
