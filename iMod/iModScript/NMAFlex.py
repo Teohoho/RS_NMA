@@ -1,188 +1,160 @@
 import mdtraj as md
 import numpy as np
-import matplotlib.pyplot as plt
-import sklearn.preprocessing as skpp
 import subprocess
 import sys
 
-#class NMAFlex:
-def NMAFlex(MDTrajObj, Threshold, Output, iModExec, tempRoot="./temp", modes=[0], deleteTemp=True):
+class NMAtoFlex:
+    def __init__(self, MDTrajObj, iModExec, tempRoot="./temp"):
+        """
+        Class that takes an MDTraj Trajectory object, ideally a prmtop/inpcrd pair 
+        so the atom indices don't change, and runs iMod on the coordinates, then
+        generates a flex file compatible with the Robosample package.
 
-    """
-        Function that takes MDTraj Trajectory Object and a Threshold
-        and returns a flex file which corresponds to the top Threshold
-        highest and lowest eigenvectors.
-        
         Parameters
         ----------
-        
+
         MDTrajObj:  MDTrajTrajectory Object
                     Trajectory object for which the NMA will be done.
-                
-        Threshold: int
-                    Threshold for dihedral selection. NOT USED!      
-    
-        Output: str
-                    Root of the flex file tot which to write.
-
-        iModExed:str
+        iModExec:   str
                     Path to iMod executable (imode_gcc)
-
-        tempdir: str
-                    Where to store the temp files that are generated 
-        modes: list of str
-                    List of modes to generate flex files for
-        deleteTemp: bool
-                    Whether or not to remove all temp files generated during 
-                    flex file generation
-    """        
-
-    ## Generate a PDB
-    PDBName = "{}.pdb".format(tempRoot)
-    MDTrajObj.save_pdb(PDBName, force_overwrite=True)
-
-    ## Run the actual iMod command
-    iModCommand = [iModExec, PDBName, "-o {}".format(tempRoot), "--save_fixfile"]
-    iMod_sub = subprocess.Popen(iModCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    iMod_sub.communicate()
-
-    ##Parse the fixfile
-    flexfields = [("ResIx", float), ("Phi", float), ("Chi", float), ("Psi", float)]
-    FixIn = open("{}.fix".format(tempRoot), "r").readlines()
-    FixArray = np.zeros(1, dtype=flexfields)
-#    print ("FixArray:")
-#    print (FixArray)
-    for Line in FixIn:
-        LineSplit = Line.strip("\n").split()
-        if (len(LineSplit) == 4):
-#            FixArray = np.vstack((FixArray,np.array(LineSplit, dtype=[("ResIx", float), ("Phi", float), ("Chi", float), ("Psi", float)])))
-      #      print ("LineSplit:")
-      #      print (np.array(LineSplit, dtype=FixArray.dtype))
-            #FixArray = np.append(FixArray,np.array(LineSplit, dtype=FixArray.dtype))
-            FixArray = np.append(FixArray,np.array([(LineSplit[0], LineSplit[1], LineSplit[2], LineSplit[3])], dtype=FixArray.dtype))
-      #      print ("FixArray:")
-     #       print (FixArray)
-    FixArray = np.delete(FixArray, 0, axis=0)
-    #print (FixArray)
-    FixArrayEmpty = FixArray
-
-    ##Parse the Evec file
-    EvecInRaw = open("{}_ic.evec".format(tempRoot), "r").readlines()
-    for ModeIx in modes:
-        EvecIn = EvecInRaw
-        counter = 0
-        EvecNice = []
-        FixArray = FixArrayEmpty
+        tempRoot:   str
+                    Path where temporary iMod-generated files will be stored
+        """
+    
+        ## Generate a PDB
+        PDBName = "{}.pdb".format(tempRoot)
+        MDTrajObj.save_pdb(PDBName, force_overwrite=True)
+    
+        ## Run the actual iMod command
+        DEBUG = 1
+        if (DEBUG == 0):
+            iModCommand = [iModExec, PDBName, "-o {}".format(tempRoot), "--save_fixfile"]
+            iMod_sub = subprocess.Popen(iModCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            iMod_sub.communicate()
+        
+        ## Generate Appropriate Arrays containing information
+        ## Parse the fixfile, which is the same regardless of mode
+        flexfields = [("ResIx", int), ("Phi", float), ("Chi", float), ("Psi", float)]
+        FixIn = open("{}.fix".format(tempRoot), "r").readlines()
+        FixArray = np.zeros(0, dtype=flexfields)
+        for Line in FixIn:
+            LineSplit = Line.strip("\n").split()
+            if (len(LineSplit) == 4):
+                FixArray = np.append(FixArray,np.array([(LineSplit[0], LineSplit[1], LineSplit[2], LineSplit[3])], dtype=FixArray.dtype)) 
+        ## Parse the Evec file, generating a list of lists, one for each mode
+        EvecIn = open("{}_ic.evec".format(tempRoot), "r").readlines()
         for lineIx in range(len(EvecIn)):
             EvecIn[lineIx] = EvecIn[lineIx].split()
+        ## Get the number of computed modes
+        NOfModes = int(EvecIn[1][3])
+        print ("Computed a number of {} modes".format(NOfModes))
+        EvecIn = EvecIn[2:]
+        EvecModes = []
+
+        ## We retrieve the absolute value of the Evec contributions
+        CurrentMode=[]
+        for lineIx in range(len(EvecIn)):
             if (EvecIn[lineIx][0] == "****"):
-                counter = counter + 1
+                if (len(CurrentMode) > 0):
+                    EvecModes.append(CurrentMode)
+                    CurrentMode=[]
                 continue
-            if (counter == ModeIx):
-                if (len(EvecIn[lineIx][0]) > 1):
-                    for EvecValue in EvecIn[lineIx]:
-                        EvecNice.append(EvecValue)
-    ##Get absolute value of Evec, normalize values
-        for EvecIx in range(len(EvecNice)):
-            EvecNice[EvecIx] = abs(float(EvecNice[EvecIx]))
-    ##Switch to array, normalize
-        EvecNice = np.array(EvecNice)
-        EvecNorm = skpp.MinMaxScaler()
-        #print (EvecNice)
+            if (len(EvecIn[lineIx][0]) > 2):
+                for EvecValue in EvecIn[lineIx]:
+                    CurrentMode.append(abs(float(EvecValue)))
+        EvecModes.append(CurrentMode)
+
+        if (DEBUG == 1):
+            print(len(EvecModes))
+            print((EvecModes[0][0]))
+            print((EvecModes[19][0]))
+
+        self.FixArray = FixArray
+        self.EvecModes = EvecModes
+        self.MDTrajObj = MDTrajObj
+        self.DEBUG = DEBUG
+
+    def GetFlex(self, Output, Threshold=25, modes=[1]):
+
+        """
+        Function that uses the previously generated arrays to generate the
+        Robosample-compatible flex files
+
+        Parameters
+        ----------
+
+        Output:     str
+                    Root name for generated flex files.
+
+        Threshold:  int
+                    After ranking angles by contribution, generate a flex file
+                    using the top <Threshold> Phi/Psi angles.
+
+        modes:      list of ints
+                    Generate flex files corresponding to these modes.
+        """
+
+        for ModeIx in modes:
+            ModeArray = self.FixArray.copy()
             
-    ##Assign vectors to dihedral angles
-        counter = 0
-#        print (FixArray.shape)
-        for aIx in range(FixArray.shape[0]):
-            #print (FixArray[aIx])
-         #   print (FixArray[aIx][1])
-            if (FixArray[aIx]["Phi"] == 1):
-                FixArray[aIx]["Phi"] = EvecNice[counter]
-                counter +=1
-            if (FixArray[aIx]["Psi"] == 1):
-                FixArray[aIx]["Psi"] = EvecNice[counter]
-                counter +=1
-    
-        ## We compute the Eigenvector distribution so we 
-        ## can choose a proper number of dihedrals to set as flexible.
-        ## In order to choose the highest contribution EVectors,
-        ## we will choose those that are not in the most populated bin.
+            ##Assign vectors to dihedral angles
+            counter = 0
+            for aIx in range(ModeArray.shape[0]):
+                if (ModeArray[aIx]["Phi"] != 0):
+                    ModeArray[aIx]["Phi"] = self.EvecModes[ModeIx-1][counter]
+                    counter +=1
+                if (ModeArray[aIx]["Psi"] != 0):
+                    ModeArray[aIx]["Psi"] = self.EvecModes[ModeIx-1][counter]
+                    counter +=1
 
-        ##We don't use histograms now
-        if (0):
-            PHIs = FixArray[::,1]
-            PHIHisto = np.histogram(PHIs)
-            PSIs = FixArray[::,3]
-            PSIHisto = np.histogram(PSIs)
-    
-        ##We choose the first Threshold values
-        sortFlexPhi = np.sort(FixArray, order="Phi")
-        sortFlexPhi = np.flip(sortFlexPhi)
-        #print (sortFlexPhi)
-        sortFlexPsi = np.sort(FixArray, order="Psi")
-        sortFlexPsi = np.flip(sortFlexPsi)
-        #print (sortFlexPsi)
+            ##Sort Arrays by Phi/Psi, in decreasing order
+            sortFlexPhi = np.sort(ModeArray, order="Phi")
+            sortFlexPhi = np.flip(sortFlexPhi)
+            sortFlexPsi = np.sort(ModeArray, order="Psi")
+            sortFlexPsi = np.flip(sortFlexPsi)
 
-        #PHIThreshold = np.array((PHIHisto[1][np.argmax(PHIHisto[0])], PHIHisto[1][np.argmax(PHIHisto[0]) + 1]))
-        #PSIThreshold = np.array((PSIHisto[1][np.argmax(PSIHisto[0])], PSIHisto[1][np.argmax(PSIHisto[0]) + 1]))
-        PHIThreshold = Threshold
-        PSIThreshold = Threshold 
-    
-        ## Parse the FixArray and add ResIDs with values
-        ## outside of any of the two thresholds to a list
-        if (0):
-            RelevantRes = []
-            for FixLine in FixArray:
-                if ((FixLine[1] > PHIThreshold[0]) and (FixLine[3] > PSIThreshold[0])):
-                    pass
-                else:
-                    RelevantRes.append(int(FixLine[0]))
-        elif (1):
-            Residues = 0
-            RelevantRes = set()
+            PhiRes = set([])
+            PsiRes = set([])
+            
             ## We get top Threshold Phi angles
-            for i in range(FixArray.shape[0]):
+            Residues = 0
+            for i in range(ModeArray.shape[0]):
                 if (Residues >= Threshold):
                     break
                 if (sortFlexPhi[i]["Phi"] != 0):
-                    #print ("added!")
-                    RelevantRes.add(int(sortFlexPhi[i]["ResIx"]))
+                    PhiRes.add(sortFlexPhi[i]["ResIx"])
                     Residues = Residues + 1
+
             ## Then we get top Threshold Psi angles
             Residues = 0
-            for i in range(FixArray.shape[0]):
+            for i in range(ModeArray.shape[0]):
                 if (Residues >= Threshold):
                     break
                 if (sortFlexPhi[i]["Psi"] != 0):
-                    #print ("added!")
-                    RelevantRes.add(int(sortFlexPhi[i]["ResIx"]))
-                    Residues = Residues + 1
+                    PsiRes.add(sortFlexPsi[i]["ResIx"])
+                    Residues = Residues + 1 
 
-            RelevantRes = list(RelevantRes)
-            RelevantRes.sort()
-            print (RelevantRes)
+            PhiRes = list(PhiRes)
+            PsiRes = list(PsiRes)
+            PhiRes.sort()
+            PsiRes.sort()
+            if (self.DEBUG == 1):
+                print ("PHI Res: {} \nPSI Res: {}".format(PhiRes,PsiRes))
 
-
-    
-        print("Predicted hinge residues for mode {}: {}".format(ModeIx, RelevantRes))
-    
+            
         ## Extract the associated PHI/PSI angles from the above residues
         ## using the MDTrajObj that the user loads.
     
-        FlexOut = open("{}.{}.flex".format(Output,ModeIx), "w")
-        for ResIx in RelevantRes:
-            NIndex = MDTrajObj.topology.select("resid {} and name N".format(ResIx))[0]
-            CAIndex = MDTrajObj.topology.select("resid {} and name CA".format(ResIx))[0]
-            CIndex = MDTrajObj.topology.select("resid {} and name C".format(ResIx))[0]
-            if (str(MDTrajObj.topology.residue(ResIx))[0:3] == "PRO"):
-                FlexOut.write("{} {} Pin \n".format(CAIndex, CIndex))
-            else:
-                FlexOut.write("{} {} Pin \n{} {} Pin\n".format(NIndex,CAIndex,CAIndex,CIndex))
-
-    ## Now we delete all the temp files we created during the process
-    if (deleteTemp is True):
-        for FileExt in [".fix", ".log", ".pdb", "_ic.evec", "_model.pdb"]:
-            procList   = ["rm", "{}{}".format(tempRoot,FileExt)]
-            removeTemp = subprocess.Popen(procList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    print ("Done!")
+            FlexOut = open("{}.{}.flex".format(Output,ModeIx), "w")
+            FlexOut.write("##MODE {}##\n".format(ModeIx))
+            FlexOut.write("##PHI ANGLES##\n")
+            for ResIx in PhiRes:
+                NIndex = self.MDTrajObj.topology.select("resid {} and name N".format(ResIx))[0]
+                CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(ResIx))[0]
+                if (str(self.MDTrajObj.topology.residue(ResIx))[0:3] != "PRO"):
+                    FlexOut.write("{} {} Pin \n".format(NIndex,CAIndex))
+            FlexOut.write("##PSI ANGLES##\n")
+            for ResIx in PsiRes:
+                CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(ResIx))[0]
+                CIndex = self.MDTrajObj.topology.select("resid {} and name C".format(ResIx))[0]
+                FlexOut.write("{} {} Pin \n".format(CAIndex,CIndex))
