@@ -259,17 +259,25 @@ class NMAtoFlex:
            
             percentiles = [0,25,50,75]
             colors = [1,3,4,7]
+            indexLists = []
             for PercIx in range(len(percentiles)):
-                VMDOutFile.write("mol color ColorId {}\n".format(colors[PercIx]))
                 indexlist = set()
                 PercValue = np.percentile(FlexOutArray["scale"], percentiles[PercIx])
                 for Ix in range(FlexOutArray.shape[0]):
                     if (FlexOutArray[Ix]["scale"] > PercValue):
                         indexlist.add(FlexOutArray[Ix]["atom1"])
                         indexlist.add(FlexOutArray[Ix]["atom2"])
-                VMDOutFile.write("mol selection {index ")
                 indexlist = list(indexlist)
-                for ix in indexlist:
+                indexLists.append(indexlist)
+                    
+        ## Make the lists have an intersection of 0
+            for Ix in range(len(indexLists)):
+                if (Ix < len(indexLists)-1):
+                    indexLists[Ix] = [x for x in indexLists[Ix] if x not in indexLists[Ix+1]]
+    
+                VMDOutFile.write("mol color ColorId {}\n".format(colors[Ix]))
+                VMDOutFile.write("mol selection {index ")
+                for ix in indexLists[Ix]:
                     VMDOutFile.write("{} ".format(ix))
                 VMDOutFile.write("}\nmol addrep top\n")
             VMDOutFile.close()
