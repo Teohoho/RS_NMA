@@ -98,9 +98,10 @@ class NMAtoFlex:
         self.EvecModes = EvecModes
         self.EvecModesScale = EvecModesScale
         self.MDTrajObj = MDTrajObj
+        self.PDBName = PDBName
         self.DEBUG = DEBUG
 
-    def GetFlex(self, Output, Threshold=25, modes=[1], GenerateVMD=True):
+    def GetFlex(self, Output, Threshold=25, modes=[1]):
 
         """
         Function that uses the previously generated arrays to generate the
@@ -117,13 +118,8 @@ class NMAtoFlex:
                     using the top <Threshold> Phi/Psi angles.
 
         modes:      list of ints
-                    Generate flex files corresponding to these modes.
-                    
-        GenerateVMD:bool
-                    Generate a VMD input file that, when loaded into VMD,
-                    loads the system and colors the bonds found in the flex file.
-                    Useful for visualisation.
-        """
+                    Generate flex files corresponding to these modes.           
+                """
 
         for ModeIx in modes:
             ModeArray = self.FixArray.copy()
@@ -220,7 +216,7 @@ class NMAtoFlex:
                 ModeArray[aIx]["Psi"] = self.EvecModesScale[counter]
                 counter +=1
 
-	##Sort Arrays by 
+	## Sort Arrays by 
         sortFlexPhi = np.sort(ModeArray, order="Phi")
         sortFlexPhi = np.flip(sortFlexPhi)
         sortFlexPsi = np.sort(ModeArray, order="Psi")
@@ -251,3 +247,30 @@ class NMAtoFlex:
         for Ix in range(FlexOutArray.shape[0]):
             FlexOut.write("{} {} {} {} \n".format(FlexOutArray[Ix]["atom1"], FlexOutArray[Ix]["atom2"], FlexOutArray[Ix]["jointType"], FlexOutArray[Ix]["scale"]))
         FlexOut.close()
+
+
+        if (GenerateVMD == True):
+        ## Generate a VMD file that loads and colors bonds according to
+        ## the scale factor
+
+            VMDOutFile = open("{}.tcl".format(Output), "w")
+    
+            VMDOutFile.write("mol new {}\n".format(self.PDBName))
+           
+            percentiles = [0,25,50,75]
+            colors = [1,3,4,7]
+            for PercIx in range(len(percentiles)):
+                VMDOutFile.write("mol color ColorId {}\n".format(colors[PercIx]))
+                indexlist = set()
+                PercValue = np.percentile(FlexOutArray["scale"], percentiles[PercIx])
+                for Ix in range(FlexOutArray.shape[0]):
+                    if (FlexOutArray[Ix]["scale"] > PercValue):
+                        indexlist.add(FlexOutArray[Ix]["atom1"])
+                        indexlist.add(FlexOutArray[Ix]["atom2"])
+                VMDOutFile.write("mol selection {index ")
+                indexlist = list(indexlist)
+                for ix in indexlist:
+                    VMDOutFile.write("{} ".format(ix))
+                VMDOutFile.write("}\nmol addrep top\n")
+            VMDOutFile.close()
+            print("VMD File written!")
