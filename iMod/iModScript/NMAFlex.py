@@ -27,7 +27,7 @@ class NMAtoFlex:
         MDTrajObj.save_pdb(PDBName, force_overwrite=True)
     
         ## Run the actual iMod command
-        DEBUG = 1
+        DEBUG = 0
         if (DEBUG == 0):
             iModCommand = [iModExec, PDBName, "-o {}".format(tempRoot), "--save_fixfile"]
             iMod_sub = subprocess.Popen(iModCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -67,7 +67,8 @@ class NMAtoFlex:
                 for EvecValue in EvecIn[lineIx]:
                     CurrentMode.append(abs(float(EvecValue)))
             else:
-                Frequencies.append(float(EvecIn[lineIx][1]))
+                #Frequencies.append(float(EvecIn[lineIx][1]))
+                Frequencies.append(1/float(EvecIn[lineIx][1]))
         EvecModes.append(CurrentMode)
 
         ## In order to get the oscilations with the highest amplitudes
@@ -254,8 +255,13 @@ class NMAtoFlex:
         ## the scale factor
 
             VMDOutFile = open("{}.tcl".format(Output), "w")
-    
+   
             VMDOutFile.write("mol new {}\n".format(self.PDBName))
+            VMDOutFile.write("mol delrep top 0\n".format(self.PDBName))
+            VMDOutFile.write("mol selection {backbone}\n")
+            VMDOutFile.write("mol addrep top\n")
+            
+            VMDOutFile.write("mol representation Bonds \n")
            
             percentiles = [0,25,50,75]
             colors = [1,3,4,7]
@@ -264,7 +270,7 @@ class NMAtoFlex:
                 indexlist = set()
                 PercValue = np.percentile(FlexOutArray["scale"], percentiles[PercIx])
                 for Ix in range(FlexOutArray.shape[0]):
-                    if (FlexOutArray[Ix]["scale"] > PercValue):
+                    if (FlexOutArray[Ix]["scale"] >= PercValue):
                         indexlist.add(FlexOutArray[Ix]["atom1"])
                         indexlist.add(FlexOutArray[Ix]["atom2"])
                 indexlist = list(indexlist)
@@ -276,9 +282,9 @@ class NMAtoFlex:
                     indexLists[Ix] = [x for x in indexLists[Ix] if x not in indexLists[Ix+1]]
     
                 VMDOutFile.write("mol color ColorId {}\n".format(colors[Ix]))
-                VMDOutFile.write("mol selection {index ")
+                VMDOutFile.write("mol selection {withinbonds 1 of (index ")
                 for ix in indexLists[Ix]:
                     VMDOutFile.write("{} ".format(ix))
-                VMDOutFile.write("}\nmol addrep top\n")
+                VMDOutFile.write(")}\nmol addrep top\n")
             VMDOutFile.close()
             print("VMD File written!")
