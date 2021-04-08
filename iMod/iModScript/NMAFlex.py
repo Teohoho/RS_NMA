@@ -21,7 +21,11 @@ class NMAtoFlex:
         tempRoot:   str
                     Path where temporary iMod-generated files will be stored
         """
-    
+   
+        ## Slice any non-protein atoms from the MDTraj Trajectory Object
+        ProteinAtoms = MDTrajObj.topology.select("protein")
+        MDTrajObj = MDTrajObj.atom_slice(ProteinAtoms)
+ 
         ## Generate a PDB
         PDBName = "{}.pdb".format(tempRoot)
         MDTrajObj.save_pdb(PDBName, force_overwrite=True)
@@ -86,6 +90,9 @@ class NMAtoFlex:
             MaxValues.append(np.max(EvecModesScale[::,Dihe]))  
         EvecModesScale = np.array(MaxValues)
         EvecModesScale = minmax_scale(EvecModesScale)
+
+        print(np.max(EvecModesScale))
+        print(np.argmax(EvecModesScale))
 
         if (DEBUG == 1):
             pass
@@ -206,15 +213,22 @@ class NMAtoFlex:
         """
 
         ModeArray = self.FixArray.copy()
+        print(ModeArray)
 	
         ##Assign vectors to dihedral angles and scaling factors
         counter = 0
         for aIx in range(ModeArray.shape[0]):
             if (ModeArray[aIx]["Phi"] != 0):
+                if (counter == 731):
+                    print (ModeArray[aIx])
                 ModeArray[aIx]["Phi"] = self.EvecModesScale[counter]
+                print(counter)
                 counter +=1
             if (ModeArray[aIx]["Psi"] != 0):
+                if (counter == 731):
+                    print (ModeArray[aIx])
                 ModeArray[aIx]["Psi"] = self.EvecModesScale[counter]
+                print(counter)
                 counter +=1
 
 	## Sort Arrays by 
