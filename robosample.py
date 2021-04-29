@@ -688,7 +688,7 @@ class Context:
 		
 		
 	class NMAtoFlex:
-		def __init__(self, MDTrajObj, iModExec, tempRoot="./temp", Modes=20):
+		def __init__(self, MDTrajObj, iModExec, tempRoot="./temp", Modes=1):
 			"""
 			Class that takes an MDTraj Trajectory object, ideally a prmtop/inpcrd pair 
 			so the atom indices don't change, and runs iMod on the coordinates, then
@@ -717,12 +717,13 @@ class Context:
 			## Generate a PDB
 			PDBName = "{}.pdb".format(tempRoot)
 			MDTrajObj.save_pdb(PDBName, force_overwrite=True)
-			
+		
 			## Run the actual iMod command
-			iModCommand = [iModExec, PDBName, "-o {}".format(tempRoot), "--save_fixfile", "-n {}".format(Modes)]
+			iModCommand = [iModExec, PDBName, "-o {}".format(tempRoot), "-x",
+								"--save_fixfile", "-n {}".format(Modes), "--norm"]
 			iMod_sub = subprocess.Popen(iModCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 			iMod_sub.communicate()
-        
+       
 			## Generate Appropriate Arrays containing information
 			## Parse the fixfile, which is the same regardless of mode
 			flexfields = [("ResIx", int), ("Phi", float), ("Chi", float), ("Psi", float)]
@@ -755,7 +756,7 @@ class Context:
 					continue
 				if (len(EvecIn[lineIx][0]) > 2):
 					for EvecValue in EvecIn[lineIx]:
-						CurrentMode.append(abs(float(EvecValue)))
+						CurrentMode.append(float(EvecValue)) 
 				else:
 					Frequencies.append(1/float(EvecIn[lineIx][1]))
 			EvecModes.append(CurrentMode)
@@ -765,16 +766,16 @@ class Context:
         ## dihedral the highest amplitude contribution
 
 			EvecModesScale = np.array(EvecModes)
-			for Mode in range(EvecModesScale.shape[0]):
-				EvecModesScale[Mode] = EvecModesScale[Mode]*Frequencies[Mode]
-			EvecModesScale = np.abs(EvecModesScale)
+			#for Mode in range(EvecModesScale.shape[0]):  ##NOTE: this was done so as not to scale the modes by freq.
+			#	EvecModesScale[Mode] = EvecModesScale[Mode]*Frequencies[Mode]
 			MaxValues = []
 
+			##TODO:FIND A WAY TO COMPUTE MAX CONTRIBUTION
+
 			## Get the largest contribution for each dihedral
-			for Dihe in range(EvecModesScale.shape[1]):
-				MaxValues.append(np.max(EvecModesScale[::,Dihe]))  
-			EvecModesScale = np.array(MaxValues)
-			EvecModesScale = minmax_scale(EvecModesScale)
+			#for Dihe in range(EvecModesScale.shape[1]):
+			#	MaxValues.append(np.max(EvecModesScale[::,Dihe]))  
+			#EvecModesScale = np.array(MaxValues)
 
 			self.EvecModes = EvecModes
 			self.EvecModesScale = EvecModesScale
@@ -867,7 +868,7 @@ class Context:
 					FlexOut.write("{} {} Pin \n".format(CAIndex,CIndex))
 
 
-		def GetFlexScaled(self, Output, GenerateVMD=True):
+		def GetFlexScaled(self, Output, GenerateVMD="beta"):
 			"""
 			Function that uses the previously generated arrays to generate the
 			Robosample-compatible flex files, along with a scaling factor for speed.
@@ -875,104 +876,144 @@ class Context:
 			Parameters
 			----------
 			
-			Output:     str
+			Output:     	str
 			            Root name for generated flex files.
 			
-			GenerateVMD:bool
-			            Generate a VMD input file that, when loaded into VMD,
-			            loads the system and colors the bonds found in the flex file.
-			            Useful for visualisation.
+			GenerateVMD:	str
+							Values: beta, percentile
+			            If percentile: Generate a VMD input file that, when loaded into 
+							VMD, loads the system and colors the bonds found in the flex file
+							by their percentile
+							If beta: modifies the Beta Factor values in the generated PDB, so 
+							the protein can be colored by Beta. A high scaling factor will be
+							translated in a high Beta Factor value. 
+							Default: beta		            
 			"""
 
 			ModeArray = self.FixArray.copy()
-			
-			##Assign vectors to dihedral angles and scaling factors
-			counter = 0
-			for aIx in range(ModeArray.shape[0]):
-				if (ModeArray[aIx]["Phi"] != 0):
-					ModeArray[aIx]["Phi"] = self.EvecModesScale[counter]
-					counter +=1
-				if (ModeArray[aIx]["Psi"] != 0):
-					ModeArray[aIx]["Psi"] = self.EvecModesScale[counter]
-					counter +=1
-
-			## Sort Arrays by 
-			sortFlexPhi = np.sort(ModeArray, order="Phi")
-			sortFlexPhi = np.flip(sortFlexPhi)
-			sortFlexPsi = np.sort(ModeArray, order="Psi")
-			sortFlexPsi = np.flip(sortFlexPsi)
 		
-			## Extract the associated PHI/PSI angles from the above array  
-			fixfields = [("atom1", int), ("atom2", int), ("jointType", str), ("scale", float)] 
-			FlexOutArray = np.zeros(0, dtype=fixfields)
-			for ResIx in range(ModeArray.shape[0]):
-				NIndex = self.MDTrajObj.topology.select("resid {} and name N".format(sortFlexPhi[ResIx]["ResIx"]))[0]
-				CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(sortFlexPhi[ResIx]["ResIx"]))[0]
-				joint = "Pin"
-				ScaleFactor = sortFlexPhi[ResIx]["Phi"]
-				if (str(self.MDTrajObj.topology.residue(ResIx))[0:3] != "PRO"):
-					FlexOutArray = np.append(FlexOutArray,np.array([(NIndex, CAIndex, joint, ScaleFactor)], dtype=FlexOutArray.dtype)) 
-			for ResIx in range(sortFlexPsi.shape[0]):
-				CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(sortFlexPsi[ResIx]["ResIx"]))[0]
-				CIndex = self.MDTrajObj.topology.select("resid {} and name C".format(sortFlexPsi[ResIx]["ResIx"]))[0]
-				joint = "Pin"
-				ScaleFactor = sortFlexPsi[ResIx]["Psi"]
-				FlexOutArray = np.append(FlexOutArray,np.array([(CAIndex, CIndex, joint, ScaleFactor)], dtype=FlexOutArray.dtype)) 
-
-			## We now sort the above array by the ScaleFactor, and write a flex file
-			FlexOutArray = np.sort(FlexOutArray, order="scale")
-			FlexOutArray = np.flip(FlexOutArray)
-			
-			FlexOut = open("{}.Scaled.flex".format(Output), "w")
-			FlexOut.write("##Scaled Flex File##\n")
-			for Ix in range(FlexOutArray.shape[0]):
-				FlexOut.write("{} {} {} {} \n".format(FlexOutArray[Ix]["atom1"], FlexOutArray[Ix]["atom2"], FlexOutArray[Ix]["jointType"], FlexOutArray[Ix]["scale"]))
-			FlexOut.close()
-
-
-			if (GenerateVMD == True):
-			## Generate a VMD file that loads and colors bonds according to
-			## the scale factor
-
-				VMDOutFile = open("{}.tcl".format(Output), "w")
-				
-				VMDOutFile.write("mol new {}\n".format(self.PDBName.split("/")[-1]))
-				VMDOutFile.write("mol delrep top 0\n".format(self.PDBName))
-				
-				VMDOutFile.write("mol representation NewCartoon \n")
-				
-				percentiles = [0,25,50,75]
-				colors = [1,3,4,7]
-				indexLists = []
-				for PercIx in range(len(percentiles)):
-					indexlist = set()
-					PercValue = np.percentile(FlexOutArray["scale"], percentiles[PercIx])
-					for Ix in range(FlexOutArray.shape[0]):
-						if (FlexOutArray[Ix]["scale"] >= PercValue):
-							indexlist.add(FlexOutArray[Ix]["atom1"])
-							indexlist.add(FlexOutArray[Ix]["atom2"])
-					indexlist = list(indexlist)
-					indexLists.append(indexlist)
-				           
-				# Make the lists disjointed
-				for Ix in range(len(indexLists)):
-					if (Ix < len(indexLists)-1):
-						indexLists[Ix] = [x for x in indexLists[Ix] if x not in indexLists[Ix+1]]
-				
-					VMDOutFile.write("mol color ColorId {}\n".format(colors[Ix]))
-					VMDOutFile.write("mol selection {index ")
-					for ix in indexLists[Ix]:
-						VMDOutFile.write("{} ".format(ix))
-					VMDOutFile.write("}\nmol addrep top\n")
-				VMDOutFile.close()
-				print("VMD File written!")
+			##Assign vectors to dihedral angles and scaling factors
+			for EvecModesScaleIx in range(len(self.EvecModes)):
+				counter = 0
+				for aIx in range(ModeArray.shape[0]):
+					if (ModeArray[aIx]["Phi"] != 0):
+						ModeArray[aIx]["Phi"] = self.EvecModesScale[EvecModesScaleIx][counter]
+						counter +=1
+					if (ModeArray[aIx]["Chi"] != 0):
+						ModeArray[aIx]["Chi"] = self.EvecModesScale[EvecModesScaleIx][counter]
+						counter +=1
+					if (ModeArray[aIx]["Psi"] != 0):
+						ModeArray[aIx]["Psi"] = self.EvecModesScale[EvecModesScaleIx][counter]
+						counter +=1
 	
+				## Sort Arrays by 
+				sortFlexChi = np.sort(ModeArray, order="Chi")
+				sortFlexChi = np.flip(sortFlexChi)
+				sortFlexPhi = np.sort(ModeArray, order="Phi")
+				sortFlexPhi = np.flip(sortFlexPhi)
+				sortFlexPsi = np.sort(ModeArray, order="Psi")
+				sortFlexPsi = np.flip(sortFlexPsi)
+			
+				## Extract the associated PHI/PSI angles from the above array  
+				fixfields = [("atom1", int), ("atom2", int),("scale", float)]
+				joint="Pin" 
+				FlexOutArray = np.zeros(0, dtype=fixfields)
+				for ResIx in range(ModeArray.shape[0]):
+					if (str(self.MDTrajObj.topology.residue(sortFlexPhi[ResIx]["ResIx"]))[0:3] != "PRO"):
+						NIndex = self.MDTrajObj.topology.select("resid {} and name N".format(sortFlexPhi[ResIx]["ResIx"]))[0]
+						CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(sortFlexPhi[ResIx]["ResIx"]))[0]
+						ScaleFactor = sortFlexPhi[ResIx]["Phi"]
+						FlexOutArray = np.append(FlexOutArray,np.array((NIndex, CAIndex, ScaleFactor), dtype=fixfields)) 
+				for ResIx in range(ModeArray.shape[0]):
+					CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(sortFlexPsi[ResIx]["ResIx"]))[0]
+					CIndex = self.MDTrajObj.topology.select("resid {} and name C".format(sortFlexPsi[ResIx]["ResIx"]))[0]
+					ScaleFactor = sortFlexPsi[ResIx]["Psi"]
+					FlexOutArray = np.append(FlexOutArray,np.array((CAIndex, CIndex, ScaleFactor), dtype=fixfields)) 
+				for ResIx in range(ModeArray.shape[0]):
+					if (str(self.MDTrajObj.topology.residue(sortFlexChi[ResIx]["ResIx"]))[0:3] not in ["PRO", "GLY","ALA"]):
+						CAIndex = self.MDTrajObj.topology.select("resid {} and name CA".format(sortFlexChi[ResIx]["ResIx"]))[0]
+						CBIndex = self.MDTrajObj.topology.select("resid {} and name CB".format(sortFlexChi[ResIx]["ResIx"]))[0]
+						ScaleFactor = sortFlexChi[ResIx]["Chi"]
+						FlexOutArray = np.append(FlexOutArray,np.array((CAIndex, CBIndex, ScaleFactor), dtype=fixfields)) 
+	
+				## We now sort the above array by the ScaleFactor, and write a flex file
+				FlexOutArray = np.sort(FlexOutArray, order="scale")
+				FlexOutArray = np.flip(FlexOutArray)
+				
+				FlexOut = open("{}.Mode{}.Scaled.flex".format(Output, EvecModesScaleIx), "w")
+				FlexOut.write("##Scaled Flex File##\n")
+				for Ix in range(FlexOutArray.shape[0]):
+					if (FlexOutArray[Ix]["scale"] != 0):
+						FlexOut.write("{} {} {} {} #{} {} \n".format(FlexOutArray[Ix]["atom1"], FlexOutArray[Ix]["atom2"], joint, FlexOutArray[Ix]["scale"], self.MDTrajObj.topology.atom(FlexOutArray[Ix]["atom1"]), self.MDTrajObj.topology.atom(FlexOutArray[Ix]["atom2"])))
+				FlexOut.close()
+	
+				BetaAtoms = list(FlexOutArray["atom1"])
+				BetaFactors = list(FlexOutArray["scale"])
+				DefaultBeta = -1 
+	
+				BetaColor = []
+				BetaColor.append(BetaAtoms)
+				BetaColor.append(BetaFactors)
+	
+				#print(BetaColor)
+	
+				if (GenerateVMD.lower() == "beta"):
+					PDBFileIn = open(self.PDBName, "r")				
+					PDBLines = []
+					for line in PDBFileIn:
+						PDBLines.append(line.strip().split())
+					for line in PDBLines:
+						if (line[0] == "ATOM"):
+							if (int(line[1])-1 in BetaColor[0]):
+								line[10] = BetaColor[1][BetaColor[0].index(int(line[1])-1)]*100
+							else:
+								line[10] = DefaultBeta		
+					PDBFileIn = open(self.PDBName, "w")
+					for i in PDBLines:
+						if (len(i) == 12):
+							PDBFileIn.write("{:6s}{:5d}  {:^4s}{:3s} {:1s}{:4d}    {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}          {:>2s}\n".format(i[0], int(i[1]), i[2], i[3], i[4], int(i[5]), float(i[6]), float(i[7]), float(i[8]), float(i[9]), float(i[10]), i[11]))	##PDB Format
+					PDBFileIn.close()
+	
+				elif (GenerateVMD.lower() == "percentile"):
+					VMDOutFile = open("{}.Mode{}.tcl".format(Output, EvecModesScaleIx), "w")
+					
+					VMDOutFile.write("mol new {}\n".format(self.PDBName.split("/")[-1]))
+					VMDOutFile.write("mol delrep top 0\n".format(self.PDBName))
+					
+					VMDOutFile.write("mol representation NewCartoon \n")
+					
+					percentiles = [0,25,50,75]
+					colors = [1,3,4,7]
+					indexLists = []
+					for PercIx in range(len(percentiles)):
+						indexlist = set()
+						PercValue = np.percentile(FlexOutArray["scale"], percentiles[PercIx])
+						for Ix in range(FlexOutArray.shape[0]):
+							if (FlexOutArray[Ix]["scale"] >= PercValue):
+								indexlist.add(FlexOutArray[Ix]["atom1"])
+								indexlist.add(FlexOutArray[Ix]["atom2"])
+						indexlist = list(indexlist)
+						indexLists.append(indexlist)
+					           
+					# Make the lists disjointed
+					for Ix in range(len(indexLists)):
+						if (Ix < len(indexLists)-1):
+							indexLists[Ix] = [x for x in indexLists[Ix] if x not in indexLists[Ix+1]]
+					
+						VMDOutFile.write("mol color ColorId {}\n".format(colors[Ix]))
+						VMDOutFile.write("mol selection {index ")
+						for ix in indexLists[Ix]:
+							VMDOutFile.write("{} ".format(ix))
+						VMDOutFile.write("}\nmol addrep top\n")
+					VMDOutFile.close()
+					print("VMD File written!")
+
 		def CleanUp(self):
 			"""
 			Simple function that cleans up the files generated during the iMod process.
-			Does NOT remove the pdb generated, since you need that for 
+			Does NOT remove the pdb generated, since you need that for the VMD scripts to work. 
 			"""
-			for FileExt in [".fix", ".log", "_ic.evec", "_model.pdb"]:
+			for FileExt in [".fix", ".log", "_ic.evec"]:
 				procList   = ["rm", "{}{}".format(self.tempRoot,FileExt)]
 				removeTemp = subprocess.Popen(procList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
